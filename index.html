@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ANONYMOUS // ANDROID TERMINAL</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <style>
+    :root {
+      --bg-color: #02060d;
+      --panel-bg: #050b14;
+      --accent-color: #00ff66;
+      --accent-glow: rgba(0, 255, 102, 0.4);
+      --text-muted: #4a6b8c;
+      --border-color: rgba(0, 255, 102, 0.3);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Fira Code', monospace;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background-color: #000;
+      color: #e2f1ff;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      overflow: hidden;
+    }
+
+    /* Container Skala Android (Responsif Penuh) */
+    .android-container {
+      position: relative;
+      width: 100%;
+      max-width: 412px; /* Ukuran standar viewport Android */
+      height: 100vh;
+      max-height: 915px; /* Skala rasio layar HP modern */
+      background: var(--panel-bg);
+      border: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 0 25px var(--accent-glow);
+      overflow: hidden;
+    }
+
+    /* Header Aplikasi */
+    .app-header {
+      background: rgba(0, 255, 102, 0.08);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 20;
+    }
+
+    .brand-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .anonymous-logo {
+      width: 26px;
+      height: 26px;
+      filter: drop-shadow(0 0 4px var(--accent-color));
+    }
+
+    .app-title {
+      font-weight: 700;
+      color: var(--accent-color);
+      font-size: 0.9rem;
+      letter-spacing: 1px;
+    }
+
+    .user-badge {
+      font-size: 0.72rem;
+      color: var(--accent-color);
+      border: 1px solid var(--border-color);
+      padding: 4px 8px;
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.6);
+    }
+
+    /* Container Menu Chat */
+    .chat-container {
+      position: relative;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--bg-color);
+    }
+
+    /* Canvas Angka Berjalan (Matrix Rain di Latar Chat) */
+    #matrixCanvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+      opacity: 0.35;
+      pointer-events: none;
+    }
+
+    /* Area Pesan Chat */
+    .chat-screen {
+      position: relative;
+      z-index: 2;
+      flex: 1;
+      padding: 14px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      scroll-behavior: smooth;
+    }
+
+    .msg-block {
+      background: rgba(2, 10, 20, 0.88);
+      border-left: 3px solid var(--accent-color);
+      padding: 8px 12px;
+      border-radius: 0 6px 6px 0;
+      word-break: break-word;
+      font-size: 0.8rem;
+      backdrop-filter: blur(2px);
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.5);
+    }
+
+    .msg-system {
+      border-left-color: #ffaa00;
+      color: #ffaa00;
+      background: rgba(20, 15, 0, 0.88);
+    }
+
+    .msg-time {
+      color: var(--text-muted);
+      font-size: 0.68rem;
+      margin-right: 6px;
+    }
+
+    .msg-author {
+      color: #00d9ff;
+      font-weight: 600;
+    }
+
+    /* Panel Input Bottom */
+    .control-deck {
+      background: rgba(0, 0, 0, 0.95);
+      border-top: 1px solid var(--border-color);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      z-index: 20;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+    }
+
+    input[type="text"], input[type="password"] {
+      background: rgba(8, 20, 32, 0.9);
+      border: 1px solid var(--border-color);
+      color: #fff;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 0.8rem;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--accent-color);
+    }
+
+    .btn {
+      background: rgba(0, 255, 102, 0.15);
+      border: 1px solid var(--accent-color);
+      color: var(--accent-color);
+      padding: 10px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      text-transform: uppercase;
+    }
+
+    .btn:active {
+      background: var(--accent-color);
+      color: #000;
+    }
+
+    /* Penyesuaian saat dibuka langsung di Browser HP */
+    @media (max-width: 480px) {
+      .android-container {
+        max-width: 100%;
+        height: 100vh;
+        max-height: 100vh;
+        border: none;
+      }
+    }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-thumb { background: var(--border-color); }
+  </style>
+</head>
+<body>
+
+  <!-- Container Layar Android -->
+  <div class="android-container">
+    
+    <!-- Header Aplikasi -->
+    <div class="app-header">
+      <div class="brand-group">
+        <svg class="anonymous-logo" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M50 5C25 5 10 25 10 45C10 65 25 85 40 92C45 94 48 95 50 95C52 95 55 94 60 92C75 85 90 65 90 45C90 25 75 5 50 5Z" stroke="#00ff66" stroke-width="3" fill="#020509"/>
+          <path d="M25 35C30 32 40 32 42 37" stroke="#00ff66" stroke-width="3"/>
+          <path d="M75 35C70 32 60 32 58 37" stroke="#00ff66" stroke-width="3"/>
+          <path d="M28 42C33 40 38 43 38 45C38 47 33 46 28 42Z" fill="#00ff66"/>
+          <path d="M72 42C67 40 62 43 62 45C62 47 67 46 72 42Z" fill="#00ff66"/>
+          <path d="M50 42L47 58H53L50 42Z" fill="#00ff66"/>
+          <path d="M35 68C42 74 58 74 65 68" stroke="#00ff66" stroke-width="3"/>
+        </svg>
+        <span class="app-title">ANONYMOUS_NET</span>
+      </div>
+      <div class="user-badge" id="identityDisplay">ID: Anonymous</div>
+    </div>
+
+    <!-- CONTAINER MENU CHAT -->
+    <div class="chat-container">
+      <!-- Canvas Angka Berjalan -->
+      <canvas id="matrixCanvas"></canvas>
+
+      <!-- Area Pesan -->
+      <div class="chat-screen" id="chatScreen">
+        <div class="msg-block msg-system">
+          <span class="msg-time">[SYS]</span>
+          <span>Sistem siap. Atur Username terlebih dahulu sebelum mengirim pesan.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel Input Bottom -->
+    <div class="control-deck">
+      <div class="input-row">
+        <input type="text" id="usernameInput" style="flex: 1;" placeholder="Username..." value="Anonymous">
+        <input type="password" id="passcodeInput" style="flex: 1;" placeholder="Passcode">
+        <button class="btn" onclick="registerIdentity()">SET</button>
+      </div>
+
+      <div class="input-row">
+        <input type="text" id="messageInput" style="flex: 1;" placeholder="Ketik pesan..." onkeypress="handleKey(event)">
+        <button class="btn" onclick="dispatchMessage()">KIRIM</button>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // --- KONFIGURASI FIREBASE REALTIME DATABASE ---
+    const firebaseConfig = {
+      databaseURL: "https://fadil-group-chat-default-rtdb.firebaseio.com/"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+    const chatRef = database.ref("chat_messages");
+
+    // --- ANIMASI ANGKA BERJALAN KHUSUS DI MENU CHAT ---
+    const canvas = document.getElementById('matrixCanvas');
+    const ctx = canvas.getContext('2d');
+    const chatContainer = document.querySelector('.chat-container');
+
+    function resizeCanvas() {
+      canvas.width = chatContainer.clientWidth;
+      canvas.height = chatContainer.clientHeight;
+    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
+
+    const chars = "0123456789ABCDEF";
+    const fontSize = 12;
+    let columns = Math.floor(canvas.width / fontSize);
+    let drops = Array(columns).fill(1);
+
+    function drawMatrix() {
+      ctx.fillStyle = "rgba(2, 6, 13, 0.1)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#00ff66";
+      ctx.font = fontSize + "px 'Fira Code', monospace";
+
+      for (let i = 0; i < drops.length; i++) {
+        const text = chars.charAt(Math.floor(Math.random() * chars.length));
+        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) drops[i] = 0;
+        drops[i]++;
+      }
+    }
+    setInterval(drawMatrix, 33);
+
+    // --- LOGIKA APPLICATION CHAT & PROTEKSI NAMA ---
+    const SECRET_ACCESS_CODE = "290406140206";
+    let currentHandle = "Anonymous";
+
+    function appendChat(author, text, timestamp, isSystem = false) {
+      const screen = document.getElementById('chatScreen');
+      const box = document.createElement('div');
+      
+      if (isSystem) {
+        box.className = "msg-block msg-system";
+        box.innerHTML = `<span class="msg-time">[SYS]</span><span>${text}</span>`;
+      } else {
+        box.className = "msg-block";
+        box.innerHTML = `<span class="msg-time">[${timestamp}]</span> <span class="msg-author">&lt;${sanitize(author)}&gt;:</span> <span>${sanitize(text)}</span>`;
+      }
+
+      screen.appendChild(box);
+      screen.scrollTop = screen.scrollHeight;
+    }
+
+    function sanitize(str) {
+      return str.replace(/[&<>'"]/g, tag => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+      }[tag] || tag));
+    }
+
+    function isFadilVariation(name) {
+      let normalized = name.toLowerCase()
+        .replace(/4/g, 'a').replace(/1/g, 'i')
+        .replace(/0/g, 'o').replace(/3/g, 'e')
+        .replace(/[^a-z]/g, '');
+
+      return [/fadil/, /fdil/, /fadl/].some(pattern => pattern.test(normalized));
+    }
+
+    function registerIdentity() {
+      const inputName = document.getElementById('usernameInput').value.trim();
+      const inputCode = document.getElementById('passcodeInput').value.trim();
+
+      if (!inputName) {
+        alert("Username tidak boleh kosong.");
+        return;
+      }
+
+      if (isFadilVariation(inputName)) {
+        if (inputCode !== SECRET_ACCESS_CODE) {
+          alert("AKSES DITOLAK!\nNama ini dilindungi. Masukkan passcode yang sesuai.");
+          return;
+        }
+      }
+
+      currentHandle = inputName;
+      document.getElementById('identityDisplay').innerText = `ID: ${currentHandle}`;
+      appendChat("SYSTEM", `Username diubah: ${currentHandle}`, "", true);
+    }
+
+    function dispatchMessage() {
+      const msgField = document.getElementById('messageInput');
+      const message = msgField.value.trim();
+
+      if (!message) return;
+
+      const timeString = new Date().toTimeString().split(' ')[0].substring(0, 5);
+
+      chatRef.push({
+        sender: currentHandle,
+        text: message,
+        timestamp: timeString,
+        createdAt: firebase.database.ServerValue.TIMESTAMP
+      });
+
+      msgField.value = '';
+    }
+
+    function handleKey(e) {
+      if (e.key === 'Enter') dispatchMessage();
+    }
+
+    chatRef.limitToLast(40).on('child_added', (snapshot) => {
+      const data = snapshot.val();
+      if (data && data.sender && data.text) {
+        appendChat(data.sender, data.text, data.timestamp || "--:--");
+      }
+    });
+  </script>
+</body>
+</html>
